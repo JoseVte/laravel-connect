@@ -8,6 +8,8 @@ namespace Square1\Laravel\Connect\Model\Relation;
  * and open the template in the editor.
  */
 
+use Illuminate\Database\Eloquent\Model;
+
 /**
  * Description of RelationHasOne
  *
@@ -15,63 +17,27 @@ namespace Square1\Laravel\Connect\Model\Relation;
  */
 class RelationBelongsToMany extends Relation
 {
-
-    /**
-     * The intermediate table for the relation.
-     *
-     * @var string
-     */
-    protected $table;
-
-    /**
-     * The foreign key of the parent model.
-     *
-     * @var string
-     */
-    protected $foreignKey;
-
-    /**
-     * The associated key of the relation.
-     *
-     * @var string
-     */
-    protected $relatedKey;
-
-
-
     /**
      * Create a new belongs to many relationship instance.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder $query
-     * @param  \Illuminate\Database\Eloquent\Model   $parent
-     * @param  string                                $table
-     * @param  string                                $foreignKey
-     * @param  string                                $relatedKey
-     * @param  string                                $relationName
-     * @return void
      */
-    public function __construct($related, $parent, $table, $foreignKey, $relatedKey, $relationName = null)
+    public function __construct(Model $related, Model $parent, protected string $table, protected string $foreignKey, protected string $relatedKey, ?string $relationName = null)
     {
-        $this->table = $table;
-        $this->relatedKey = $relatedKey;
-        $this->foreignKey = $foreignKey;
 
         parent::__construct($related, $parent, $relationName);
     }
-    
-    public function toArray()
+
+    public function toArray(): array
     {
         $array = parent::toArray();
-        
+
         $array['table'] = $this->table;
         $array['relatedKey'] = $this->relatedKey;
         $array['foreignKey'] = $this->foreignKey;
-        
-         
+
         return $array;
     }
-    
-    public function relatesToMany()
+
+    public function relatesToMany(): bool
     {
         return true;
     }

@@ -2,6 +2,8 @@
 
 namespace Square1\Laravel\Connect\Model\Relation;
 
+use Illuminate\Database\Eloquent\Model;
+
 /**
  * Description of RelationBelongsTo
  *
@@ -9,60 +11,27 @@ namespace Square1\Laravel\Connect\Model\Relation;
  */
 class RelationBelongsTo extends Relation
 {
-
-    /**
-     * The foreign key of the parent model.
-     *
-     * @var string
-     */
-    protected $foreignKey;
-
     /**
      * The local key of the parent model.
-     *
-     * @var string
      */
-    protected $localKey;
-    
-    /**
-     * The associated key on the parent model.
-     *
-     * @var string
-     */
-    protected $ownerKey;
+    protected string $localKey;
 
-   
-    
     /**
      * Create a new belongs to relationship instance.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder $query
-     * @param  \Illuminate\Database\Eloquent\Model   $child
-     * @param  string                                $foreignKey
-     * @param  string                                $ownerKey
-     * @return void
      */
-    public function __construct($related, $child, $foreignKey, $ownerKey, $relationName)
+    public function __construct(Model $related, Model $child, protected string $foreignKey, protected string $ownerKey, ?string $relationName)
     {
-        $this->ownerKey = $ownerKey;
-        $this->foreignKey = $foreignKey;
 
         parent::__construct($related, $child, $relationName);
     }
-    
-    
-    public function toArray()
+
+    public function toArray(): array
     {
         $array = parent::toArray();
-        
+
         $array['ownerKey'] = $this->ownerKey;
         $array['foreignKey'] = $this->foreignKey;
-         
+
         return $array;
-    }
-    
-    public function relatesToMany()
-    {
-        return false;
     }
 }

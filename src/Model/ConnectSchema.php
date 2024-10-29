@@ -2,6 +2,7 @@
 
 namespace Square1\Laravel\Connect\Model;
 
+use Illuminate\Database\Schema\Builder;
 use Illuminate\Support\Facades\Facade;
 
 /**
@@ -9,37 +10,24 @@ use Illuminate\Support\Facades\Facade;
  */
 class ConnectSchema extends Facade
 {
-    public static function inspecting(MigrationInspector $inspector)
+    public static function inspecting(MigrationInspector $inspector): void
     {
         static::$resolvedInstance['connect'] = new InjectedBuilder($inspector);
     }
 
     /**
      * Get a schema builder instance for a connection.
-     *
-     * @param  string $name
-     * @return \Illuminate\Database\Schema\Builder
      */
-    public static function connection($name)
+    public static function connection(string $name): Builder
     {
-        if (isset(static::$resolvedInstance['connect'])) {
-            return static::$resolvedInstance['connect'];
-        } else {
-            return static::$app['db']->connection($name)->getSchemaBuilder();
-        }
+        return static::$resolvedInstance['connect'] ?? static::$app['db']->connection($name)->getSchemaBuilder();
     }
 
     /**
      * Get a schema builder instance for the default connection.
-     *
-     * @return \Illuminate\Database\Schema\Builder
      */
-    protected static function getFacadeAccessor()
+    protected static function getFacadeAccessor(): Builder
     {
-        if (isset(static::$resolvedInstance['connect'])) {
-            return static::$resolvedInstance['connect'];
-        } else {
-            return static::$app['db']->connection()->getSchemaBuilder();
-        }
+        return static::$resolvedInstance['connect'] ?? static::$app['db']->connection()->getSchemaBuilder();
     }
 }

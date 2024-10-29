@@ -9,9 +9,9 @@ use Illuminate\Database\Schema\Grammars\Grammar;
 
 class ApiClientBlueprint extends Blueprint
 {
-    private $inspector;
-    
- 
+    private MigrationInspector $inspector;
+
+
     /**
      * Create a new schema blueprint.
      *
@@ -27,8 +27,8 @@ class ApiClientBlueprint extends Blueprint
         parent::__construct($table, $callback);
         $this->inspector = $inspector;
     }
-    
-    
+
+
     public function build(Connection $connection = null, Grammar $grammar = null)
     {
     }

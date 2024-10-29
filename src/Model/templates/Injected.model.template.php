@@ -15,18 +15,18 @@ use Square1\Laravel\Connect\Model\ModelInspector;
 use Square1\Laravel\Connect\Model\RelationAttribute;
 
 
-use Square1\Laravel\Connect\Model\Relation\RelationHasOne;
-use Square1\Laravel\Connect\Model\Relation\RelationHasMany;
-use Square1\Laravel\Connect\Model\Relation\RelationBelongsTo;
-use Square1\Laravel\Connect\Model\Relation\RelationBelongsToMany;
-use Square1\Laravel\Connect\Model\Relation\RelationHasManyThrough;
+use Square1\Laravel\Connect\Model\relation\RelationHasOne;
+use Square1\Laravel\Connect\Model\relation\RelationHasMany;
+use Square1\Laravel\Connect\Model\relation\RelationBelongsTo;
+use Square1\Laravel\Connect\Model\relation\RelationBelongsToMany;
+use Square1\Laravel\Connect\Model\relation\RelationHasManyThrough;
 
 class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Template
 {
     public $inspector;
     private $data;
     private $model;
-   
+
     private $tableAttributes;
 
 
@@ -39,7 +39,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
         $this->data = array();
         $this->presenter = null;
     }
-   
+
     public function setTableAttributes($attributes)
     {
         $this->tableAttributes = $attributes;
@@ -54,15 +54,15 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     {
         return $this->model->getForeignKey();
     }
-    
+
     ///expose some of the protected members
-    
+
     public function getAppends()
     {
         return $this->appends;
     }
-    
-    
+
+
     /**
      * Get a relationship value from a method.
      *
@@ -75,8 +75,8 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     {
         return  $this->$method();
     }
-    
-    
+
+
     //////////////////////////////
     ///////////////////////
     //////////////////
@@ -96,7 +96,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     public function hasOne($related, $foreignKey = null, $localKey = null)
     {
         $relationName = $this->guessRelationName();
-        
+
         $instance = $this->newRelatedInstance($related);
 
         $foreignKey = $foreignKey ?: $this->getForeignKey();
@@ -119,7 +119,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     public function morphOne($related, $name, $type = null, $id = null, $localKey = null)
     {
         throwException(new Exception("morphOne not implemented"));
-        
+
         $instance = $this->newRelatedInstance($related);
 
         list($type, $id) = $this->getMorphs($name, $type, $id);
@@ -177,7 +177,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     public function morphTo($name = null, $type = null, $id = null)
     {
         throwException(new Exception("morphTo not implemented"));
-        
+
         // If no name is provided, we will use the backtrace to get the function name
         // since that is most likely the name of the polymorphic interface. We can
         // use that to get both the class and foreign key that will be utilized.
@@ -208,18 +208,18 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     protected function morphEagerTo($name, $type, $id)
     {
         throwException(new Exception("morphEagerTo not implemented"));
-        
+
         return new MorphTo(
             $this->newQuery()->setEagerLoads([]),
-        
+
             $this->model,
-        
+
             $id,
-        
+
             null,
-        
+
             $type,
-        
+
             $name
         );
     }
@@ -236,7 +236,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     protected function morphInstanceTo($target, $name, $type, $id)
     {
         throwException(new Exception("morphInstanceTo not implemented"));
-        
+
         $instance = $this->newRelatedInstance(
             static::getActualClassNameForMorph($target)
         );
@@ -274,7 +274,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
         return $caller['function'];
     }
 
-    
+
     /**
      * Define a one-to-many relationship.
      *
@@ -286,7 +286,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     public function hasMany($related, $foreignKey = null, $localKey = null)
     {
         $relationName = $this->guessRelationName();
-          
+
         $instance = $this->newRelatedInstance($related);
 
         $foreignKey = $foreignKey ?: $this->getForeignKey();
@@ -309,7 +309,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     public function hasManyThrough($related, $through, $firstKey = null, $secondKey = null, $localKey = null, $secondLocalKey = null)
     {
         $relationName = $this->guessRelationName();
-        
+
         $through = new $through;
 
         $firstKey = $firstKey ?: $this->getForeignKey();
@@ -322,7 +322,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
 
         return new RelationHasManyThrough($instance, $this->model, $through, $firstKey, $secondKey, $localKey, $relationName);
     }
-    
+
 
 
     /**
@@ -338,7 +338,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
     public function morphMany($related, $name, $type = null, $id = null, $localKey = null)
     {
         throw (new Exception("morphMany not implemented"));
-        
+
         $instance = $this->newRelatedInstance($related);
 
         // Here we will gather up the morph type and ID for the relationship so that we
@@ -403,11 +403,11 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
      * @param  bool   $inverse
      * @return \Illuminate\Database\Eloquent\Relations\MorphToMany
      */
-    
+
     public function morphToMany($related, $name, $table = null, $foreignKey = null, $relatedKey = null, $parentKey = null, $relatedKey1 = null, $inverse = false)
     {
         throw (new Exception("morphMany not implemented"));
-        
+
         //        $caller = $this->guessBelongsToManyRelation();
         //
         //        // First, we will need to determine the foreign key and "other key" for the
@@ -440,7 +440,7 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
      * @param  string $relatedKey
      * @return \Illuminate\Database\Eloquent\Relations\MorphToMany
      */
-    
+
     public function morphedByMany($related, $name, $table = null, $foreignPivotKey = null, $relatedPivotKey = null, $parentKey = null, $relatedKey = null)
     {
         throw(new Exception("morphMany not implemented"));
@@ -533,15 +533,15 @@ class Injected_INJECTED_CLASS_NAME_Template extends _INJECTED_CLASS_NAME_Templat
             }
         );
     }
-    
-    
+
+
     public function __get($name)
     {
         if (isset($this->tableAttributes[$name])) {
             return $this->tableAttributes[$name]->dummyData();
         }
-        
-        
+
+
         return parent::__get($name);
     }
 }

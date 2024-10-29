@@ -7,37 +7,36 @@
 
 namespace Square1\Laravel\Connect\App\Filters;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Str;
 
 class Criteria
 {
-    const CONTAINS = "contains";
-    const EQUAL = "equal";
-    const NOTEQUAL = "notequal";
-    const GREATERTHAN = "greaterthan";
-    const LOWERTHAN = "lowerthan";
-    const GREATERTHANOREQUAL = "greaterthanorequal";
-    const LOWERTHANOREQUAL = "lowerthanorequal";
+    public const CONTAINS = 'contains';
 
+    public const EQUAL = 'equal';
 
-    private $relation;
-    
-    private $param;
-    
-    private $name;
-    
-    private $value;
-    
-    private $verb;
-    
+    public const NOTEQUAL = 'notequal';
 
-    public function __construct($name, $value, $verb)
+    public const GREATERTHAN = 'greaterthan';
+
+    public const LOWERTHAN = 'lowerthan';
+
+    public const GREATERTHANOREQUAL = 'greaterthanorequal';
+
+    public const LOWERTHANOREQUAL = 'lowerthanorequal';
+
+    private string $relation;
+
+    private string $param;
+
+    private string $verb;
+
+    public function __construct(private readonly string $name, private readonly mixed $value, $verb)
     {
-        $this->name = $name;
-        
         $exploded = explode('.', $name);
-        
-        if (count($exploded) == 2) {
+
+        if (count($exploded) === 2) {
             $this->relation = $exploded[0];
             $this->param = $exploded[1];
         } else {
@@ -45,62 +44,61 @@ class Criteria
             $this->param = $exploded[0];
         }
 
-        $this->value = $value;
         $this->verb = Str::lower($verb);
     }
-    
-    public function onRelation()
+
+    public function onRelation(): bool
     {
-        return strlen($this->relation) > 0;
+        return $this->relation !== '';
     }
 
-    public function relation()
+    public function relation(): string
     {
         return $this->relation;
     }
-    
-    public function name()
+
+    public function name(): string
     {
         return $this->name;
     }
 
-    public function param()
+    public function param(): string
     {
         return $this->param;
     }
-    
-    public function verb()
+
+    public function verb(): string
     {
         return $this->verb;
     }
-    
+
     public function value()
     {
         return $this->value;
     }
-    
-    public function apply($query, $table = '')
+
+    public function apply(Builder $query, string $table = ''): Builder
     {
-        if (strlen($table) > 0) {
+        if ($table !== '') {
             $name = $table.'.'.$this->param;
         } else {
             $name = $this->param;
         }
-       
-        if ($this->verb === "contains") {
-            $query->where($name, 'like', '%' . $this->value . '%');
-        } elseif ($this->verb === "equal") {
+
+        if ($this->verb === self::CONTAINS) {
+            $query->where($name, 'like', '%'.$this->value.'%');
+        } elseif ($this->verb === self::EQUAL) {
             $query->where($name, $this->value);
-        } elseif ($this->verb === "notequal") {
-            $query->where($name, "!=", $this->value);
-        } elseif ($this->verb === "greaterthan") {
-            $query->where($name, ">", $this->value);
-        } elseif ($this->verb === "lowerthan") {
-            $query->where($name, "<", $this->value);
-        } elseif ($this->verb === "greaterthanorequal") {
-            $query->where($name, "=>", $this->value);
-        } elseif ($this->verb === "lowerthanorequal") {
-            $query->where($name, "<=", $this->value);
+        } elseif ($this->verb === self::NOTEQUAL) {
+            $query->where($name, '!=', $this->value);
+        } elseif ($this->verb === self::GREATERTHAN) {
+            $query->where($name, '>', $this->value);
+        } elseif ($this->verb === self::LOWERTHAN) {
+            $query->where($name, '<', $this->value);
+        } elseif ($this->verb === self::GREATERTHANOREQUAL) {
+            $query->where($name, '>=', $this->value);
+        } elseif ($this->verb === self::LOWERTHANOREQUAL) {
+            $query->where($name, '<=', $this->value);
         }
 
         return $query;

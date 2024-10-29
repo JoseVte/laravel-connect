@@ -14,12 +14,12 @@ use Illuminate\Support\Fluent;
 
 class ModelAttribute
 {
-    const TYPE_INT = 'int';
-    const TYPE_DOUBLE = 'double';
-    const TYPE_BOOL = 'bool';
-    const TYPE_STRING = 'string';
-    const TYPE_TIME_STAMP = 'time_stamp';
-    
+    public const TYPE_INT = 'int';
+    public const TYPE_DOUBLE = 'double';
+    public const TYPE_BOOL = 'bool';
+    public const TYPE_STRING = 'string';
+    public const TYPE_TIME_STAMP = 'time_stamp';
+
     //    public $type;
     //    public $name;
     //    public $references;
@@ -31,12 +31,12 @@ class ModelAttribute
     //
     //    public $dynamic;
 
-    public $fluent;
-    
+    public Fluent $fluent;
+
     // public $foreignKey;
-    
-    
-    
+
+
+
     public function __construct(Fluent $fluent)
     {
         $this->fluent = $fluent;
@@ -48,21 +48,21 @@ class ModelAttribute
         //        $this->collection = FALSE;
         //        $this->dynamic = FALSE;
     }
-    
-    
+
+
 
     public function __get($key)
     {
         return $this->fluent[$key];
     }
-    
+
 
     public function __set($key, $value)
     {
         $this->fluent[$key] = $value;
     }
-    
-    public function primaryKey()
+
+    public function primaryKey(): bool
     {
         return !empty($this->fluent) &&
         !empty($this->fluent->autoIncrement) &&
@@ -70,12 +70,12 @@ class ModelAttribute
     }
 
 
-    public function isRelation()
+    public function isRelation(): bool
     {
         return !empty($this->on) && !
                 empty($this->references);
     }
-    
+
     public function __toString()
     {
         if (!empty($this->on) && !empty($this->references)
@@ -84,17 +84,17 @@ class ModelAttribute
         }
         return "att:$this->name:$this->type";
     }
-    
+
     public function dummyData()
     {
         if (isset($this->allowed)) {
             if (is_array($this->allowed)) {
                 return $this->allowed[0];
             }
-            
+
             return $this->allowed;
         }
-        
+
         switch ($this->type) {
         case 'boolean':
             return true;
@@ -113,15 +113,15 @@ class ModelAttribute
         case 'timestamp':
             return Carbon::now(new DateTimeZone('Europe/London'));
         }
-        
-        if ($this->type == null) {
+
+        if ($this->type === null) {
             return 'string';
         }
-        
-        if ($this->type == 'enum') {
+
+        if ($this->type === 'enum') {
             return $this->fluent['allowed'][0];
         }
-        
+
         return new $this->type;
     }
 }

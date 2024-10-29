@@ -15,7 +15,7 @@ namespace Square1\Laravel\Connect\Model\Relation;
  */
 class RelationHasMany extends RelationHasOne
 {
-    public function relatesToMany()
+    public function relatesToMany(): bool
     {
         return true;
     }

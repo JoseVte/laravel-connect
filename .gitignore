@@ -2,4 +2,5 @@ vendor
 nbproject
 src/Console/tmp
 .DS_Store
+.idea
 laravel-connect.code-workspace

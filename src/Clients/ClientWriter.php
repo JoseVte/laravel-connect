@@ -6,77 +6,68 @@ use Square1\Laravel\Connect\Console\MakeClient;
 
 abstract class ClientWriter
 {
-    private $client;
+    public function __construct(private readonly MakeClient $client) {}
 
-    public function __construct(MakeClient $makeClient)
-    {
-        $this->client = $makeClient;
-    }
-
-    public function client()
+    public function client(): MakeClient
     {
         return $this->client;
     }
 
-    public function info($string, $verbosity = null)
+    public function info($string, $verbosity = null): void
     {
         $this->client->info($string, $verbosity);
     }
 
     /**
      * get the app version
-     *
-     * @return String
      */
-    public function appVersion(){
+    public function appVersion(): string
+    {
         return $this->client->appVersion;
     }
 
     /**
      * get the app name
-     *
-     * @return String
      */
-    public function appName(){
+    public function appName(): string
+    {
         return $this->client->appName;
     }
-    
-    
-    public function pathComponentsAsArrayString(){
+
+    public function pathComponentsAsArrayString(): string
+    {
 
         $str = config('connect.api.prefix');
-        $result = "";
-    
-        foreach (explode("/",$str) as $part ) {
-            
-            if(!empty($part)) {
-                
-                if(empty($result)){
-                    $result = "[";
-                }else {
-                    $result = $result.",";
+        $result = '';
+
+        foreach (explode('/', $str) as $part) {
+
+            if (! empty($part)) {
+
+                if (empty($result)) {
+                    $result = '[';
+                } else {
+                    $result .= ',';
                 }
-                
-                $result = $result."\"$part\"";
-                
+
+                $result .= "\"$part\"";
+
             }
-                
+
         }
-        
-         if(!empty($result)){
-             $result = $result."]";
-          }
+
+        if (! empty($result)) {
+            $result .= ']';
+        }
 
         return $result;
 
     }
 
     /**
-     *
-     * @param mixed $attribute, string or ModelAttribute
-     * @return type
+     * @param  mixed  $attribute,  string or ModelAttribute
      */
-    abstract public function resolveType($attribute);
+    abstract public function resolveType(mixed $attribute): ?string;
 
     abstract public function outputClient();
 }

@@ -12,44 +12,28 @@ use Illuminate\Support\Fluent;
 
 class RelationAttribute
 {
-    const TYPE_HAS_MANY = 'hasMany';
-    const TYPE_MORPH_MANY = 'morphMany';
-    const TYPE_BELONGS_TO = 'belongsTo';
-    const TYPE_HAS_ONE = 'hasOne';
-    const TYPE_BELONGS_TO_MANY = 'belongsToMany';
+    public const TYPE_HAS_MANY = 'hasMany';
 
+    public const TYPE_MORPH_MANY = 'morphMany';
 
-    public $type;
-    
-    public $model;
-   
-    public $name;
-    
-    public $foreignKey;
-    
-    public $localKey;
-    
-    private $fluent;
+    public const TYPE_BELONGS_TO = 'belongsTo';
 
+    public const TYPE_HAS_ONE = 'hasOne';
 
+    public const TYPE_BELONGS_TO_MANY = 'belongsToMany';
 
+    public string $foreignKey;
 
-    /**
-     *
-     * @param string $name  the name of this relationship
-     * @param string $type  the type of the relationship
-     * @param string $model the model class that this reference to
-     */
-    
-    public function __construct($name, $type, $model)
+    public string $localKey;
+
+    private ?Fluent $fluent = null;
+
+    public function __construct(public string $name, public string $type, public string $model)
     {
-        $this->name = $name;
-        $this->type = $type;
-        $this->model = $model;
         $this->localKey = 'unset';
         $this->foreignKey = 'unset';
     }
-    
+
     public function __toString()
     {
         return "rel:$this->name:$this->type:$this->model:$this->foreignKey-$this->localKey";

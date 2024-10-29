@@ -1,24 +1,27 @@
 {
-    "name": "square1ltd/laravel-connect",
-    "description": "Connect to a laravel backend from anywhere",
-    "type": "package",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Roberto Prato",
-            "email": "roberto@square1.io"
-        }
-    ],
-    "require": {
-        "php": ">=5.6.4",
-        "laravel/framework": "^5.4",
-         "laravel/passport": "^3.0"
-    },
-    "require-dev": {
-    },
-     "autoload": {
-        "psr-4": {
-            "Square1\\Laravel\\Connect\\": "src"
-        }
+  "name": "square1ltd/laravel-connect",
+  "description": "Connect to a laravel backend from anywhere",
+  "type": "package",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Roberto Prato",
+      "email": "roberto@square1.io"
     }
+  ],
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^11.0.0",
+    "laravel/passport": "v12.3.0",
+    "lcobucci/jwt": "^5.4",
+    "ext-dom": "*"
+  },
+  "require-dev": {
+    "laravel/pint": "^1.18"
+  },
+  "autoload": {
+    "psr-4": {
+      "Square1\\Laravel\\Connect\\": "src"
+    }
+  }
 }

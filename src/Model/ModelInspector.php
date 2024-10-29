@@ -9,27 +9,27 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Fluent;
 use \Illuminate\Filesystem\Filesystem;
 use Square1\Laravel\Connect\Console\MakeClient;
-use Square1\Laravel\Connect\Model\Relation\Relation;
-use Square1\Laravel\Connect\Model\Relation\BelongsToMany;
+use Square1\Laravel\Connect\Model\relation\Relation;
+use Square1\Laravel\Connect\Model\relation\BelongsToMany;
 
 class ModelInspector
 {
     private $model;
-     
+
     private $modelInfo;
 
     private $baseTmpPath;
-     
+
     private $client;
-     
+
     private $methods;
-     
+
     private $dynamicAttributesMethods;
-     
+
     public $relations;
-     
+
     public $dynamicAttributes;
-     
+
     public $tableAttributes;
 
 
@@ -53,11 +53,11 @@ class ModelInspector
         $this->client = $client;
         $this->baseTmpPath = $client->baseTmpPath."/model";
         $this->client->info(">>>>>>>>>>>>>>>>>>>>>>>>>".$className);
-       
-       
+
+
         $this->modelInfo = new ReflectionClass($className);
     }
-    
+
     public function init()
     {
         $this->endpointReference = $this->modelInfo->newInstance()->endpointReference();
@@ -71,33 +71,33 @@ class ModelInspector
         $this->dynamicAttributesMethods = array();
         $this->purgedUselessMethods($this->methods, $this->dynamicAttributesMethods);
     }
-    
+
     public function classShortName()
     {
         return $this->modelInfo->getShortName();
     }
-    
+
     public function className()
     {
         return $this->modelInfo->getName();
     }
-    
-    
+
+
     public function tableName()
     {
         return $this->model->getTable();
     }
-    
+
     public function primaryKey()
     {
         return $this->model->getKeyName();
     }
-    
+
     public function endpointReference()
     {
         return $this->endpointReference;
     }
-    
+
     public function hasTrait()
     {
         return isset($this->modelInfo->getTraits()['Square1\Laravel\Connect\Traits\ConnectModelTrait']);
@@ -109,32 +109,32 @@ class ModelInspector
         $baseCode = $this->files->get(dirname(__FILE__)."/templates/Injected.model.template.php");
         $baseCode = str_replace('_INJECTED_CLASS_NAME_Template', $injectedClassName, $baseCode);
         $baseCode = str_replace('_INJECTED_EXTENDED_CLASS_NAME_', $this->className(), $baseCode);
-        
+
         $injectedClassName = 'Square1\Laravel\Connect\Console\Injected\Injected'.$this->classShortName();
         //prepare tmp folder
         if ($this->files->isDirectory($this->baseTmpPath) == false) {
             $this->files->makeDirectory($this->baseTmpPath, 0755, true);
         }
-        
+
         //get the file name to store this new class in
         $fileName = $this->injectedClassFileName();
         if ($this->files->isFile($fileName) == true) {
             $this->files->delete($fileName);
         }
-        
+
         $this->files->put($fileName, $baseCode);
         include_once $fileName;
-        
+
         return new $injectedClassName;
     }
-    
-    
+
+
     public function inspect()
     {
         $this->client->info('starting inspection ');
-        
+
         foreach ($this->tableAttributes as $attribute) {
-            
+
             //update the attribute type based on model specifics
             $type = $this->model->getTypeHint($attribute->name);
             if($type) {
@@ -144,32 +144,32 @@ class ModelInspector
 
             $this->model->{$attribute->name} = $attribute->dummyData();
         }
-        
+
         $this->findRelations();
         $this->resolveAppendedAttributes();
     }
-    
-    
+
+
     private function findRelations()
     {
         $this->client->info('finding relations ...');
- 
+
         foreach ($this->methods as $method) {
             $this->callMethod($method, $this->model);
         }
     }
-    
+
     public function callMethod(\ReflectionMethod $method, $on)
     {
         try {
             $this->client->info('calling '.$method->name, 'vvv');
-                 
+
             $result = $method->invoke($on);
-                 
+
             if ($result instanceof Relation) {
                 $relatesToMany = $result->relatesToMany();
                 $result = $result->toArray();
-                    
+
                 //is this relation via a separate table ?
                 if ($relatesToMany && isset($result['table'])) {
                     $tableAttributes = $this->client->tableMap[$result['table']]["attributes"];
@@ -194,13 +194,13 @@ class ModelInspector
     private function purgedUselessMethods(array& $out, array& $dynamicAttributes)
     {
         $this->client->info('removing unnecesary methods ...', 'vvv');
-        
+
         //only take into account public methods.
         $methods = $this->modelInfo->getMethods(ReflectionMethod::IS_PUBLIC);
-        
+
         $traitsMethods = array();
         $traits = $this->modelInfo->getTraits();
-        
+
         //skip methods inherited from traits
         foreach ($traits as $trait) {
             $traitMethods = $trait->getMethods(ReflectionMethod::IS_PUBLIC);
@@ -217,24 +217,24 @@ class ModelInspector
                 )
             );
         }
-        
+
         foreach ($methods as $method) {
             if (isset($traitsMethods[$method->name])) {
                 $this->client->info("skipping $method->name", 'vvv');
                 continue;
             };
-            
+
             //esclude constructors and methods that take one or more parameters
             if (strpos($method->name, '_construct') === false
                 && empty($method->getParameters())
                 && $method->class == $this->modelInfo->getName()
             ) {//not inherited
-                
+
                 if (Str::startsWith($method->name, "get")
                     && Str::endsWith($method->name, "Attribute")
                 ) {
                     $dynamicAttributes[$method->name] = $method;
-                    
+
                     $this->client->info("found dynamic attribute $method->name", 'vvv');
                 } else {
                     $out[] = $method;
@@ -242,7 +242,7 @@ class ModelInspector
                 }
             }
         }
-       
+
         //return $useful;
     }
 
@@ -250,7 +250,7 @@ class ModelInspector
     {
         foreach ($this->model->getAppends() as $attributeName) {
             $methodName = 'get'.Str::studly($attributeName)."Attribute";
-            
+
             if (isset($this->dynamicAttributesMethods[$methodName])) {
                 $type = $this->model->getTypeHint($attributeName);
                 if ($type == null) {
@@ -280,7 +280,7 @@ class ModelInspector
     {
         return $this->dynamicAttributes;
     }
-    
+
     public function getTableAttributes()
     {
         return $this->tableAttributes;
@@ -291,15 +291,15 @@ class ModelInspector
         return array_merge($this->dynamicAttributes, $this->tableAttributes);
     }
 
-    
+
     public function relations()
     {
         return $this->relations;
     }
-    
-    
-    
-    
+
+
+
+
     public function getHidden()
     {
         return $this->model->getHidden();

@@ -8,6 +8,8 @@ namespace Square1\Laravel\Connect\Model\Relation;
  * and open the template in the editor.
  */
 
+use Illuminate\Database\Eloquent\Model;
+
 /**
  * Description of RelationHasOne
  *
@@ -15,35 +17,18 @@ namespace Square1\Laravel\Connect\Model\Relation;
  */
 class RelationHasOne extends Relation
 {
-
-    /**
-     * The foreign key of the parent model.
-     *
-     * @var string
-     */
-    protected $foreignKey;
-
-    /**
-     * The local key of the parent model.
-     *
-     * @var string
-     */
-    protected $localKey;
-    
-    public function __construct($related, $parent, $foreignKey, $localKey, $relationName)
+    public function __construct(Model $related, Model $parent, protected string $foreignKey, protected string $localKey, ?string $relationName)
     {
         parent::__construct($related, $parent, $relationName);
-        $this->localKey = $localKey;
-        $this->foreignKey = $foreignKey;
     }
-    
-    public function toArray()
+
+    public function toArray(): array
     {
         $array = parent::toArray();
 
         $array['localKey'] = $this->localKey;
         $array['foreignKey'] = $this->foreignKey;
-         
+
         return $array;
     }
 }

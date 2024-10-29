@@ -6,30 +6,30 @@ use Exception;
 
 trait ConnectApiRequestTrait
 {
-    public function getAssociatedModel()
-    {
-        throw new Exception("associatedModel is not set for this request");
-    }
-    
     /**
-     * returning this to true automaticall adds   the following parameters to the request  'page' => 'integer','per_page' => 'integer',
-     *
-     * @return boolean
+     * @throws Exception
      */
-  
-    public function getIsPaginated()
+    public function getAssociatedModel(): void
+    {
+        throw new Exception('associatedModel is not set for this request');
+    }
+
+    /**
+     * returning this to true automatically adds
+     * the following parameters to the request
+     * 'page' => 'integer','per_page' => 'integer'
+     */
+    public function getIsPaginated(): bool
     {
         return false;
     }
 
     /**
      * return an array with the parameters for this request
-     *
-     * @return array
      */
-    public function parameters()
+    public function parameters(): array
     {
-        $params = array();
+        $params = [];
         $rules = $this->rules();
 
         if (isset($this->params)) {
@@ -37,6 +37,7 @@ trait ConnectApiRequestTrait
         } else {
             $params = array_merge($rules, $params);
         }
+
         return $params;
     }
 }

@@ -4,71 +4,55 @@ namespace Square1\Laravel\Connect\Model;
 
 use Closure;
 use Illuminate\Database\Connection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Schema\Builder;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Database\Query\Grammars\Grammar;
+use Illuminate\Database\Schema\Builder;
+use Illuminate\Database\SQLiteConnection;
 
-class MockConnection extends \Illuminate\Database\SQLiteConnection
-{
-}
+class MockConnection extends SQLiteConnection {}
 
 class InjectedBuilder extends Builder
 {
-    private $inspector;
-    
-    private $blueprint;
+    private MigrationInspector $inspector;
 
+    private Blueprint $blueprint;
 
     /**
      * Create a new database Schema manager.
-     *
-     * @param  \Illuminate\Database\Connection $connection
-     * @return void
      */
     public function __construct(MigrationInspector $inspector)
     {
         $this->inspector = $inspector;
     }
-    
+
     /**
      * Create a new command set with a Closure.
      *
-     * @param  string        $table
-     * @param  \Closure|null $callback
-     * @return \Illuminate\Database\Schema\Blueprint
+     * @param  string  $table
      */
-    protected function createBlueprint($table, Closure $callback = null)
+    protected function createBlueprint($table, ?Closure $callback = null): Blueprint
     {
         return $this->inspector->createBlueprint($table, $callback);
     }
-    
-    public function getBluePrint()
+
+    public function getBluePrint(): Blueprint
     {
         return $this->blueprint;
     }
 
-
     /**
      * Execute the blueprint to build / modify the table.
-     *
-     * @param  \Illuminate\Database\Schema\Blueprint $blueprint
-     * @return void
      */
-    protected function build(Blueprint $blueprint)
+    protected function build(Blueprint $blueprint): void
     {
         $blueprint->build($this->connection, $this->grammar);
     }
-    
-
 
     /**
      * Determine if the given table exists.
      *
-     * @param  string $table
-     * @return bool
+     * @param  string  $table
      */
-    public function hasTable($table)
+    public function hasTable($table): bool
     {
         return false;
     }
@@ -76,30 +60,27 @@ class InjectedBuilder extends Builder
     /**
      * Determine if the given table has a given column.
      *
-     * @param  string $table
-     * @param  string $column
-     * @return bool
+     * @param  string  $table
+     * @param  string  $column
      */
-    public function hasColumn($table, $column)
+    public function hasColumn($table, $column): bool
     {
         $column = strtolower($column);
 
-        return in_array($column, array_map('strtolower', $this->getColumnListing($table)));
+        return in_array($column, array_map('strtolower', $this->getColumnListing($table)), true);
     }
 
     /**
      * Determine if the given table has given columns.
      *
-     * @param  string $table
-     * @param  array  $columns
-     * @return bool
+     * @param  string  $table
      */
-    public function hasColumns($table, array $columns)
+    public function hasColumns($table, array $columns): bool
     {
         $tableColumns = array_map('strtolower', $this->getColumnListing($table));
 
         foreach ($columns as $column) {
-            if (! in_array(strtolower($column), $tableColumns)) {
+            if (! in_array(strtolower($column), $tableColumns, true)) {
                 return false;
             }
         }
@@ -110,11 +91,11 @@ class InjectedBuilder extends Builder
     /**
      * Get the data type for the given column name.
      *
-     * @param  string $table
-     * @param  string $column
-     * @return string
+     * @param  string  $table
+     * @param  string  $column
+     * @param  false  $fullDefinition
      */
-    public function getColumnType($table, $column)
+    public function getColumnType($table, $column, $fullDefinition = false): string
     {
         $table = $this->connection->getTablePrefix().$table;
 
@@ -124,10 +105,9 @@ class InjectedBuilder extends Builder
     /**
      * Get the column listing for a given table.
      *
-     * @param  string $table
-     * @return array
+     * @param  string  $table
      */
-    public function getColumnListing($table)
+    public function getColumnListing($table): array
     {
         $table = $this->connection->getTablePrefix().$table;
 
@@ -139,11 +119,9 @@ class InjectedBuilder extends Builder
     /**
      * Modify a table on the schema.
      *
-     * @param  string   $table
-     * @param  \Closure $callback
-     * @return \Illuminate\Database\Schema\Blueprint
+     * @param  string  $table
      */
-    public function table($table, Closure $callback)
+    public function table($table, Closure $callback): void
     {
         $this->build($this->createBlueprint($table, $callback));
     }
@@ -151,11 +129,9 @@ class InjectedBuilder extends Builder
     /**
      * Create a new table on the schema.
      *
-     * @param  string   $table
-     * @param  \Closure $callback
-     * @return \Illuminate\Database\Schema\Blueprint
+     * @param  string  $table
      */
-    public function create($table, Closure $callback)
+    public function create($table, Closure $callback): void
     {
         $blueprint = $this->createBlueprint($table);
 
@@ -169,10 +145,9 @@ class InjectedBuilder extends Builder
     /**
      * Drop a table from the schema.
      *
-     * @param  string $table
-     * @return \Illuminate\Database\Schema\Blueprint
+     * @param  string  $table
      */
-    public function drop($table)
+    public function drop($table): void
     {
         $blueprint = $this->createBlueprint($table);
 
@@ -184,10 +159,9 @@ class InjectedBuilder extends Builder
     /**
      * Drop a table from the schema if it exists.
      *
-     * @param  string $table
-     * @return \Illuminate\Database\Schema\Blueprint
+     * @param  string  $table
      */
-    public function dropIfExists($table)
+    public function dropIfExists($table): void
     {
         $blueprint = $this->createBlueprint($table);
 
@@ -199,11 +173,10 @@ class InjectedBuilder extends Builder
     /**
      * Rename a table on the schema.
      *
-     * @param  string $from
-     * @param  string $to
-     * @return \Illuminate\Database\Schema\Blueprint
+     * @param  string  $from
+     * @param  string  $to
      */
-    public function rename($from, $to)
+    public function rename($from, $to): Blueprint
     {
         $blueprint = $this->createBlueprint($from);
 
@@ -214,44 +187,32 @@ class InjectedBuilder extends Builder
 
     /**
      * Enable foreign key constraints.
-     *
-     * @return bool
      */
-    public function enableForeignKeyConstraints()
+    public function enableForeignKeyConstraints(): bool
     {
         return true;
     }
 
     /**
      * Disable foreign key constraints.
-     *
-     * @return bool
      */
-    public function disableForeignKeyConstraints()
+    public function disableForeignKeyConstraints(): bool
     {
         return true;
     }
 
-
-
     /**
      * Get the database connection instance.
-     *
-     * @return \Illuminate\Database\Connection
      */
-    public function getConnection()
+    public function getConnection(): ?Connection
     {
         return null;
     }
 
-
     /**
      * Set the Schema Blueprint resolver callback.
-     *
-     * @param  \Closure $resolver
-     * @return void
      */
-    public function blueprintResolver(Closure $resolver)
+    public function blueprintResolver(Closure $resolver): void
     {
         $this->resolver = $resolver;
     }

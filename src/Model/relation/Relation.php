@@ -2,71 +2,37 @@
 
 namespace Square1\Laravel\Connect\Model\Relation;
 
-use Illuminate\Contracts\Support\Jsonable;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Contracts\Support\Jsonable;
+use Illuminate\Database\Eloquent\Model;
 
-class Relation implements Jsonable, Arrayable
+class Relation implements Arrayable, Jsonable
 {
-    
-    /**
-     * The parent model instance.
-     *
-     * @var \Illuminate\Database\Eloquent\Model
-     */
-    protected $parent;
-
-    /**
-     * The related model instance.
-     *
-     * @var \Illuminate\Database\Eloquent\Model
-     */
-    protected $related;
-    
-    /**
-     * The name of the relationship.
-     *
-     * @var string
-     */
-    protected $relationName;
-    
-   
     /**
      * Create a new relation instance.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder $query
-     * @param  \Illuminate\Database\Eloquent\Model   $parent
-     * @return void
      */
-    public function __construct($related, $parent, $relationName)
-    {
-        $this->relationName = $relationName;
-        $this->parent = $parent;
-        $this->related = $related;
-    }
-    
-    
+    public function __construct(protected Model $related, protected Model $parent, protected ?string $relationName) {}
+
     /**
      * indicates if this relation points to one or more related model instances
-     *
-     * @var type boolean
      */
-    
-    public function relatesToMany()
+    public function relatesToMany(): bool
     {
         return false;
     }
 
-    
-    public function toJson($options = 0)
+    /**
+     * @throws \JsonException
+     */
+    public function toJson($options = 0): false|string
     {
-        return json_encode($this->toArray(), $options);
+        return json_encode($this->toArray(), JSON_THROW_ON_ERROR | $options);
     }
+
     /**
      * Get the instance as an array.
-     *
-     * @return array
      */
-    public function toArray()
+    public function toArray(): array
     {
         $array = [];
         $array['name'] = $this->relationName;
@@ -74,21 +40,23 @@ class Relation implements Jsonable, Arrayable
         $array['parent'] = get_class($this->parent);
         $array['related'] = get_class($this->related);
         $array['many'] = $this->relatesToMany();
+
         return $array;
     }
-    
+
     public function __call($method, $parameters)
     {
         return $this;
     }
-    
-    public function get_class_name($object = null)
+
+    public function get_class_name($object = null): false|string
     {
-        if (!is_object($object) && !is_string($object)) {
+        if (! is_object($object) && ! is_string($object)) {
             return false;
         }
 
         $class = explode('\\', (is_string($object) ? $object : get_class($object)));
+
         return $class[count($class) - 1];
     }
 }

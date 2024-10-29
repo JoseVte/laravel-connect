@@ -3,74 +3,73 @@
 namespace Square1\Laravel\Connect\Clients\Android;
 
 use Illuminate\Support\Str;
-use Square1\Laravel\Connect\Console\MakeClient;
 use Square1\Laravel\Connect\Clients\ClientWriter;
-use Square1\Laravel\Connect\Model\ModelAttribute;
-use Square1\Laravel\Connect\Model\ModelInspector;
 use Square1\Laravel\Connect\Clients\Deploy\GitDeploy;
+use Square1\Laravel\Connect\Console\MakeClient;
+use Square1\Laravel\Connect\Model\ModelAttribute;
 
 class AndroidClientWriter extends ClientWriter
 {
-    public function __construct(MakeClient $makeClient)
+    public function __construct(MakeClient $client)
     {
-        parent::__construct($makeClient);
+        parent::__construct($client);
     }
 
-    public function outputClient()
+    public function outputClient(): void
     {
-        $this->info("------ RUNNING ANDROID CLIENT WRITER ------");
+        $this->info('------ RUNNING ANDROID CLIENT WRITER ------');
 
-        $package = config("connect.clients.android.package");
-        
+        $package = config('connect.clients.android.package');
+
         //prepare Android folder
-        $this->client()->initAndClearFolder($this->client()->baseBuildPath . '/android/');
+        $this->client()->initAndClearFolder($this->client()->baseBuildPath.'/android/');
         $path = $this->buildJavaPackageFolder($package);
 
         //now that patsh are set prepare git for deploy
         // pull previous version
         $git = new GitDeploy(
             env('ANDROID_GIT_REPO'),
-            $this->client()->baseBuildPath . '/android/',
+            $this->client()->baseBuildPath.'/android/',
             env('ANDROID_GIT_BRANCH')
         );
-        
+
         $git->setDisabled(env('ANDROID_GIT_DISABLED', true));
-                
+
         $git->init();
-        
-        $tableMap  = array_merge(array(), $this->client()->tableMap);
-         
+
+        $tableMap = array_merge([], $this->client()->tableMap);
+
         foreach ($this->client()->classMap as $classMap) {
-            $routes = isset($classMap["routes"]) ? $classMap["routes"] : [];
+            $routes = $classMap['routes'] ?? [];
             $inspector = $classMap['inspector'];
             $className = $inspector->classShortName();
             $primaryKey = $inspector->primaryKey();
             $classPath = $inspector->endpointReference();
-            $this->info($package . "." . $className);
+            $this->info($package.'.'.$className);
 
             //loop over the tables and match members and types
             $members = $this->buildJavaMembers($inspector->allAttributes());
             $relations = $this->buildJavaRelations($inspector->relations());
             $endpoints = $this->buildJavaRoutes($routes);
 
-            $java = view("android::master", compact('classPath', 'package', 'className', 'primaryKey', 'members', 'relations', 'endpoints'))->render();
-            $this->client()->files->put($path . "/" . $className . ".java", $java);
+            $java = view('android::master', compact('classPath', 'package', 'className', 'primaryKey', 'members', 'relations', 'endpoints'))->render();
+            $this->client()->files->put($path.'/'.$className.'.java', $java);
         }
-        
+
         //add gradle file
-        $gradleFile = $this->client()->files->get(dirname(__FILE__)."/gradle/build.gradle");
-        $this->client()->files->put($this->client()->baseBuildPath . '/android/build.gradle', $gradleFile);
-        
+        $gradleFile = $this->client()->files->get(__DIR__ .'/gradle/build.gradle');
+        $this->client()->files->put($this->client()->baseBuildPath.'/android/build.gradle', $gradleFile);
+
         //add androidManifest.xml file
-        $manifestFile = $this->client()->files->get(dirname(__FILE__)."/gradle/src/main/AndroidManifest.xml");
+        $manifestFile = $this->client()->files->get(__DIR__ .'/gradle/src/main/AndroidManifest.xml');
         $manifestFile = str_replace('{{PACKAGE}}', $package, $manifestFile);
-        $this->client()->files->put($this->client()->baseBuildPath . '/android/src/main/AndroidManifest.xml', $manifestFile);
-        
+        $this->client()->files->put($this->client()->baseBuildPath.'/android/src/main/AndroidManifest.xml', $manifestFile);
+
         // deliver to the mobile developer
         $git->push();
     }
 
-    private function buildJavaRoutes($routes)
+    private function buildJavaRoutes($routes): array
     {
         $requests = [];
 
@@ -79,7 +78,7 @@ class AndroidClientWriter extends ClientWriter
             foreach ($allowedMethods as $method) {
                 $request = $this->buildJavaRoute($method, $route);
                 if (count($allowedMethods) > 1) {
-                    $request['requestName'] = $request['requestName'] . "_$method";
+                    $request['requestName'] .= "_$method";
                 }
                 $requests[] = $request;
             }
@@ -88,7 +87,7 @@ class AndroidClientWriter extends ClientWriter
         return $requests;
     }
 
-    private function buildJavaRoute($method, $route)
+    private function buildJavaRoute($method, $route): array
     {
         $requestParams = null;
         $requestParamsMap = null;
@@ -99,50 +98,50 @@ class AndroidClientWriter extends ClientWriter
                 $type = $this->resolveTableNameToJavaType($param['table']);
             }
             //if no table type we use the route type
-            if (!isset($type)) {
+            if (! isset($type)) {
                 $type = $this->resolveToJavaType($param['type']);
             }
 
-            if (isset($param['array']) && $param['array'] == true) {
+            if (isset($param['array']) && $param['array']) {
                 $type = "Iterable<$type>";
             }
 
             //buidling the method signature
-            if (!empty($requestParams)) {
-                $requestParams = $requestParams . ', ';
+            if (! empty($requestParams)) {
+                $requestParams .= ', ';
             }
-            $requestParams = $requestParams . "$type $paramName";
+            $requestParams .= "$type $paramName";
 
-            if (!empty($requestParamsMap)) {
-                $requestParamsMap = $requestParamsMap . ',';
+            if (! empty($requestParamsMap)) {
+                $requestParamsMap .= ',';
             }
-            $requestParamsMap = $requestParamsMap . "\"$paramName\",$paramName";
+            $requestParamsMap .= "\"$paramName\",$paramName";
         }
 
         $request = [];
         $request['requestMethod'] = $method;
         $request['requestUri'] = $route['uri'];
         $request['requestName'] = $route['methodName'];
-        $request['paginated'] = $route['paginated'] == true ? 'true' : 'false';
+        $request['paginated'] = $route['paginated'] ? 'true' : 'false';
         $request['requestParams'] = $requestParams;
         $request['requestParamsMap'] = $requestParamsMap;
 
         return $request;
     }
 
-    private function buildJavaRelations($relations)
+    private function buildJavaRelations($relations): array
     {
         $results = [];
-        
+
         foreach ($relations as $relationName => $relation) {
 
-            if(!isset($this->client()->classMap[$relation['related']])){
+            if (! isset($this->client()->classMap[$relation['related']])) {
                 continue;
             }
 
             $varName = lcfirst($relationName);
             $name = $relationName;
-            $type = $relation['many'] ? "ModelManyRelation" : "ModelOneRelation";
+            $type = $relation['many'] ? 'ModelManyRelation' : 'ModelOneRelation';
             $hasSetter = false;
             $relatedClass = $this->client()->classMap[$relation['related']]['inspector']->classShortName();
             $type = $type."<$relatedClass>";
@@ -150,13 +149,13 @@ class AndroidClientWriter extends ClientWriter
             $key = $relation['foreignKey'];
             $results[$varName] = compact('hasSetter', 'varName', 'name', 'type', 'relatedClass', 'key', 'many');
         }
-        
+
         return $results;
     }
 
-    private function buildJavaMembers($attributes)
+    private function buildJavaMembers($attributes): array
     {
-        $members = array();
+        $members = [];
 
         foreach ($attributes as $attribute) {
             $attribute = is_array($attribute) ? $attribute[0] : $attribute;
@@ -165,11 +164,11 @@ class AndroidClientWriter extends ClientWriter
             $varName = lcfirst($attribute->name);
             $name = Str::studly($attribute->name);
             $type = $this->resolveType($attribute);
-      
+
             $hasSetter = $attribute->dynamic == false; //those have no setter! are from the append of the model array
             $primaryKey = $attribute->primaryKey();
 
-            if (!empty($type) && !$primaryKey) {
+            if (! empty($type) && ! $primaryKey) {
                 $members[$varName] = compact('hasSetter', 'varName', 'name', 'type');
             }
         }
@@ -196,38 +195,34 @@ class AndroidClientWriter extends ClientWriter
 
         $params = [];
 
-        foreach ($route["params"] as $paramName => $param) {
+        foreach ($route['params'] as $paramName => $param) {
             $current = [];
             $current['name'] = $paramName;
-            $current['type'] = isset($param["table"]) ?
-                    $this->resolveTableNameToJavaType($param["table"]) : null;
+            $current['type'] = isset($param['table']) ?
+                    $this->resolveTableNameToJavaType($param['table']) : null;
             if (is_null($current['type'])) {
-                $current['type'] = $this->resolveToJavaType($param["type"]);
+                $current['type'] = $this->resolveToJavaType($param['type']);
             }
 
-            $current['array'] = isset($param["array"]);
+            $current['array'] = isset($param['array']);
 
             $params[] = $current;
         }
-
-
 
         return $javaRoute;
     }
 
     /**
-     *
-     * @param mised $attribute, string or ModelAttribute
-     * @return type
+     * @param  mixed  $attribute,  string or ModelAttribute
      */
-    public function resolveType($attribute)
+    public function resolveType(mixed $attribute): ?string
     {
         if ($attribute instanceof ModelAttribute) {
-            if (!empty($attribute->on)) {
+            if (! empty($attribute->on)) {
                 if (isset($this->client()->tableInspectorMap[$attribute->on])) {//$attribute->isRelation() == TRUE){
                     ///so this is a relation, lets get the 'on' value and find what class this relates to
                     $modelInspector = $this->client()->tableInspectorMap[$attribute->on];
-                    if (!empty($modelInspector)) {
+                    if (! empty($modelInspector)) {
                         return $modelInspector->classShortName();
                     } else {
                         return null; ///this was a relation with a model that is not exposed
@@ -245,59 +240,59 @@ class AndroidClientWriter extends ClientWriter
     public function resolveTableNameToJavaType($table)
     {
         $modelInspector = $this->client()->tableInspectorMap[$table];
-        if (!empty($modelInspector)) {
+        if (! empty($modelInspector)) {
             return $modelInspector->classShortName();
         }
 
         return null;
     }
 
-    public function resolveToJavaType($type)
+    public function resolveToJavaType($type): string
     {
-        if ($type == 'text'
-            || $type == 'char'
-            || $type == 'string'
-            || $type == 'enum'
+        if ($type === 'text'
+            || $type === 'char'
+            || $type === 'string'
+            || $type === 'enum'
         ) {
             return 'String';
         }
 
-        if ($type == 'timestamp'
-            || $type == 'date'
-            || $type == 'dateTime'
+        if ($type === 'timestamp'
+            || $type === 'date'
+            || $type === 'dateTime'
         ) {
             return 'Date';
         }
 
-        if ($type == 'integer' || $type == 'int') {
+        if ($type === 'integer' || $type === 'int') {
             return 'Integer';
         }
 
-        if ($type == 'float') {
+        if ($type === 'float') {
             return 'Float';
         }
 
-        if ($type == 'double') {
+        if ($type === 'double') {
             return 'Double';
         }
 
-        if ($type == 'boolean') {
+        if ($type === 'boolean') {
             return 'Boolean';
         }
 
-        if ($type == 'image') {
+        if ($type === 'image') {
             return 'UploadedFile';
         }
 
         return $type;
     }
 
-    private function buildJavaPackageFolder($package)
+    private function buildJavaPackageFolder($package): string
     {
-        $path = $this->client()->baseBuildPath . '/android/src/main/java/' . str_replace('.', '/', $package);
+        $path = $this->client()->baseBuildPath.'/android/src/main/java/'.str_replace('.', '/', $package);
 
         $this->client()->initAndClearFolder($path);
-        
+
         return $path;
     }
 }

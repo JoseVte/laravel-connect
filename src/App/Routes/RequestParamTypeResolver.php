@@ -2,67 +2,52 @@
 
 namespace Square1\Laravel\Connect\App\Routes;
 
-use Closure;
-use RuntimeException;
+use AllowDynamicProperties;
 use BadMethodCallException;
-use Illuminate\Support\Str;
+use Closure;
 use Illuminate\Support\Fluent;
+use Illuminate\Support\Str;
+use Illuminate\Validation\PresenceVerifierInterface;
+use Illuminate\Validation\ValidationData;
 use Illuminate\Validation\ValidationRuleParser;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
+use JsonException;
+use RuntimeException;
 use Square1\Laravel\Connect\Console\MakeClient;
 
+#[AllowDynamicProperties]
 class RequestParamTypeResolver
 {
     /**
-     * The initial rules provided.
-     *
-     * @var array
-     */
-    protected $initialRules;
-
-    /**
      * The rules to be applied to the data.
-     *
-     * @var array
      */
-    protected $rules;
+    protected array $rules;
 
     /**
      * The array of wildcard attributes with their asterisks expanded.
-     *
-     * @var array
      */
-    protected $implicitAttributes = [];
+    protected array $implicitAttributes = [];
 
     /**
      * The array of custom attribute names.
-     *
-     * @var array
      */
-    public $customAttributes = [];
+    public array $customAttributes = [];
 
     /**
      * The array of custom displayable values.
-     *
-     * @var array
      */
-    public $customValues = [];
+    public array $customValues = [];
 
     /**
-     * All of the custom validator extensions.
-     *
-     * @var array
+     * All the custom validator extensions.
      */
-    public $extensions = [];
+    public array $extensions = [];
 
-    public $paramsType = [];
+    public array $paramsType = [];
 
     /**
      * Map of rules types to data types supported by the client.
-     *
-     * @var array
      */
-    protected $typesMap = [
+    protected array $typesMap = [
         'File' => 'UploadedFile',
         'Image' => 'UploadedFile',
         'Integer' => 'int',
@@ -73,55 +58,38 @@ class RequestParamTypeResolver
 
     /**
      * The validation rules that may be applied to files.
-     *
-     * @var array
      */
-    protected $fileRules = [
+    protected array $fileRules = [
         'File', 'Image', 'Mimes', 'Mimetypes', 'Min',
         'Max', 'Size', 'Between', 'Dimensions',
     ];
 
     /**
      * The validation rules that imply the field is required.
-     *
-     * @var array
      */
-    protected $implicitRules = [
+    protected array $implicitRules = [
         'Required', 'Filled', 'RequiredWith', 'RequiredWithAll', 'RequiredWithout',
         'RequiredWithoutAll', 'RequiredIf', 'RequiredUnless', 'Accepted', 'Present',
     ];
 
     /**
      * The validation rules which depend on other fields as parameters.
-     *
-     * @var array
      */
-    protected $dependentRules = [
+    protected array $dependentRules = [
         'RequiredWith', 'RequiredWithAll', 'RequiredWithout', 'RequiredWithoutAll',
         'RequiredIf', 'RequiredUnless', 'Confirmed', 'Same', 'Different', 'Unique',
         'Before', 'After', 'BeforeOrEqual', 'AfterOrEqual',
     ];
 
-    private $makeClient;
-
     /**
      * Create a new Validator instance.
-     *
-     * @param \Illuminate\Contracts\Translation\Translator $translator
-     * @param array                                        $data
-     * @param array                                        $rules
-     * @param array                                        $messages
-     * @param array                                        $customAttributes
      */
-    public function __construct(MakeClient $client, array $rules)
+    public function __construct(private readonly MakeClient $makeClient, protected array $initialRules)
     {
-        $this->makeClient = $client;
-        $this->initialRules = $rules;
-
-        $this->setRules($rules);
+        $this->setRules($initialRules);
     }
 
-    public function resolve()
+    public function resolve(): void
     {
         // We'll spin through each rule, validating the attributes attached to that
         // rule. Any error messages will be added to the containers with each of
@@ -137,10 +105,10 @@ class RequestParamTypeResolver
     /**
      * Validate a given attribute against a rule.
      *
-     * @param string $attribute
-     * @param string $rule
+     * @param  string  $attribute
+     * @param  string  $rule
      */
-    protected function validateAttribute($attribute, $rule)
+    protected function validateAttribute($attribute, $rule): void
     {
         if (is_array($rule)) {
             foreach ($rule as $r) {
@@ -152,18 +120,18 @@ class RequestParamTypeResolver
         $this->makeClient->info("VALIDATING $attribute ->".json_encode($rule), 'vvv');
 
         //init values
-        if (!isset($this->paramsType[$attribute])) {
+        if (! isset($this->paramsType[$attribute])) {
             $this->paramsType[$attribute] = [];
             $this->paramsType[$attribute]['type'] = 'string';
         }
 
-        list($rule, $parameters) = ValidationRuleParser::parse($rule);
+        [$rule, $parameters] = ValidationRuleParser::parse($rule);
 
-        if ($rule == '') {
+        if ($rule === '') {
             return;
         }
 
-        // First we will get the correct keys for the given attribute in case the field is nested in
+        // First, we will get the correct keys for the given attribute in case the field is nested in
         // an array. Then we determine if the given rule accepts other field names as parameters.
         // If so, we will replace any asterisks found in the parameters with the correct keys.
         if (($keys = $this->getExplicitKeys($attribute))
@@ -175,7 +143,7 @@ class RequestParamTypeResolver
         if ($rule === 'Array') {
             $this->paramsType[$attribute]['array'] = true;
         } elseif ($rule === 'Exists') {
-            if (!empty($parameters) && is_array($parameters)) {
+            if (! empty($parameters) && is_array($parameters)) {
                 //attempt to resolve the type from the Model class
                 $classType = $this->makeClient->getModelClassFromTableName($parameters[0]);
                 if (isset($classType)) {
@@ -201,26 +169,18 @@ class RequestParamTypeResolver
 
     /**
      * Determine if the given rule depends on other fields.
-     *
-     * @param string $rule
-     *
-     * @return bool
      */
-    protected function dependsOnOtherFields($rule)
+    protected function dependsOnOtherFields(string $rule): bool
     {
-        return in_array($rule, $this->dependentRules);
+        return in_array($rule, $this->dependentRules, true);
     }
 
     /**
      * Get the explicit keys from an attribute flattened with dot notation.
      *
      * E.g. 'foo.1.bar.spark.baz' -> [1, 'spark'] for 'foo.*.bar.*.baz'
-     *
-     * @param string $attribute
-     *
-     * @return array
      */
-    protected function getExplicitKeys($attribute)
+    protected function getExplicitKeys(string $attribute): array
     {
         $pattern = str_replace('\*', '([^\.]+)', preg_quote($this->getPrimaryAttribute($attribute), '/'));
 
@@ -238,16 +198,12 @@ class RequestParamTypeResolver
      * Get the primary attribute name.
      *
      * For example, if "name.0" is given, "name.*" will be returned.
-     *
-     * @param string $attribute
-     *
-     * @return string
      */
-    protected function getPrimaryAttribute($attribute)
+    protected function getPrimaryAttribute(string $attribute): string
     {
         $result = $attribute;
         foreach ($this->implicitAttributes as $unparsed => $parsed) {
-            if (in_array($attribute, $parsed)) {
+            if (in_array($attribute, $parsed, true)) {
                 $result = $unparsed;
                 break;
             }
@@ -258,16 +214,14 @@ class RequestParamTypeResolver
     }
 
     /**
-     * Replace each field parameter which has asterisks with the given keys.
+     * Replace each field parameter that has asterisks with the given keys.
      *
-     * @param array $parameters
-     * @param array $keys
      *
-     * @return array
+     * @throws JsonException
      */
-    protected function replaceAsterisksInParameters(array $parameters, array $keys)
+    protected function replaceAsterisksInParameters(array $parameters, array $keys): array
     {
-        $this->makeClient->info('replaceAsterisksInParameters '.json_encode($parameters).'=>'.json_encode($keys), 'vvv');
+        $this->makeClient->info('replaceAsterisksInParameters '.json_encode($parameters, JSON_THROW_ON_ERROR).'=>'.json_encode($keys, JSON_THROW_ON_ERROR), 'vvv');
 
         return array_map(
             function ($field) use ($keys) {
@@ -279,14 +233,8 @@ class RequestParamTypeResolver
 
     /**
      * Determine if the attribute is validatable.
-     *
-     * @param string $rule
-     * @param string $attribute
-     * @param mixed  $value
-     *
-     * @return bool
      */
-    protected function isValidatable($rule, $attribute, $value)
+    protected function isValidatable(string $rule, string $attribute, mixed $value): bool
     {
         return $this->presentOrRuleIsImplicit($rule, $attribute, $value) &&
                $this->passesOptionalCheck($attribute) &&
@@ -296,14 +244,8 @@ class RequestParamTypeResolver
 
     /**
      * Determine if the field is present, or the rule implies required.
-     *
-     * @param string $rule
-     * @param string $attribute
-     * @param mixed  $value
-     *
-     * @return bool
      */
-    protected function presentOrRuleIsImplicit($rule, $attribute, $value)
+    protected function presentOrRuleIsImplicit(string $rule, string $attribute, mixed $value): bool
     {
         if (is_string($value) && trim($value) === '') {
             return $this->isImplicit($rule);
@@ -315,59 +257,46 @@ class RequestParamTypeResolver
     /**
      * Determine if a given rule implies the attribute is required.
      *
-     * @param string $rule
-     *
-     * @return bool
+     * @param  string  $rule
      */
-    protected function isImplicit($rule)
+    protected function isImplicit($rule): bool
     {
-        return in_array($rule, $this->implicitRules);
+        return in_array($rule, $this->implicitRules, true);
     }
 
     /**
      * Determine if the attribute passes any optional check.
-     *
-     * @param string $attribute
-     *
-     * @return bool
      */
-    protected function passesOptionalCheck($attribute)
+    protected function passesOptionalCheck(string $attribute): bool
     {
-        if (!$this->hasRule($attribute, ['Sometimes'])) {
+        if (! $this->hasRule($attribute, ['Sometimes'])) {
             return true;
         }
 
         $data = ValidationData::initializeAndGatherData($attribute, $this->data);
 
         return array_key_exists($attribute, $data)
-                    || in_array($attribute, array_keys($this->data));
+                    || array_key_exists($attribute, $this->data);
     }
 
     /**
      * Determine if the attribute fails the nullable check.
-     *
-     * @param string $attribute
-     * @param mixed  $value
-     *
-     * @return bool
      */
-    protected function isNotNullIfMarkedAsNullable($attribute, $value)
+    protected function isNotNullIfMarkedAsNullable(string $attribute, mixed $value): bool
     {
-        if (!$this->hasRule($attribute, ['Nullable'])) {
+        if (! $this->hasRule($attribute, ['Nullable'])) {
             return true;
         }
 
-        return !is_null($value);
+        return ! is_null($value);
     }
 
     /**
      * Explode the explicit rule into an array if necessary.
      *
-     * @param mixed $rule
-     *
-     * @return array
+     * @throws JsonException
      */
-    protected function explodeExplicitRule($rule)
+    protected function explodeExplicitRule(mixed $rule): array
     {
         $result = [];
 
@@ -379,44 +308,34 @@ class RequestParamTypeResolver
             $result = $rule;
         }
 
-        $this->makeClient->info("explodeExplicitRule $rule ".json_encode($result), 'vvv');
+        $this->makeClient->info("explodeExplicitRule $rule ".json_encode($result, JSON_THROW_ON_ERROR), 'vvv');
 
         return $result;
     }
 
     /**
      * Determine if the given attribute has a rule in the given set.
-     *
-     * @param string       $attribute
-     * @param string|array $rules
-     *
-     * @return bool
      */
-    public function hasRule($attribute, $rules)
+    public function hasRule(string $attribute, array|string $rules): bool
     {
-        return !is_null($this->getRule($attribute, $rules));
+        return ! is_null($this->getRule($attribute, $rules));
     }
 
     /**
      * Get a rule and its parameters for a given attribute.
-     *
-     * @param string       $attribute
-     * @param string|array $rules
-     *
-     * @return array|null
      */
-    protected function getRule($attribute, $rules)
+    protected function getRule(string $attribute, array|string $rules): ?array
     {
-        if (!array_key_exists($attribute, $this->rules)) {
-            return;
+        if (! array_key_exists($attribute, $this->rules)) {
+            return null;
         }
 
         $rules = (array) $rules;
 
         foreach ($this->rules[$attribute] as $rule) {
-            list($rule, $parameters) = ValidationRuleParser::parse($rule);
+            [$rule, $parameters] = ValidationRuleParser::parse($rule);
 
-            if (in_array($rule, $rules)) {
+            if (in_array($rule, $rules, true)) {
                 return [$rule, $parameters];
             }
         }
@@ -425,11 +344,12 @@ class RequestParamTypeResolver
     /**
      * Set the validation rules.
      *
-     * @param array $rules
      *
      * @return $this
+     *
+     * @throws JsonException
      */
-    public function setRules(array $rules)
+    public function setRules(array $rules): static
     {
         $this->initialRules = $rules;
 
@@ -443,15 +363,15 @@ class RequestParamTypeResolver
     /**
      * Parse the given rules and merge them into current rules.
      *
-     * @param array $rules
+     * @throws JsonException
      */
-    protected function addRules($rules)
+    protected function addRules(array $rules): void
     {
         foreach ($rules as $param => $rule) {
             //clean up the wildcards
             $param = str_replace('\.\*', '', preg_quote($param));
             //check if param is already set
-            if (!isset($this->rules[$param])) {
+            if (! isset($this->rules[$param])) {
                 $this->rules[$param] = [];
             }
             $exploded = $this->explodeExplicitRule($rule);
@@ -462,17 +382,15 @@ class RequestParamTypeResolver
     /**
      * Add conditions to a given field based on a Closure.
      *
-     * @param string|array $attribute
-     * @param string|array $rules
-     * @param callable     $callback
-     *
      * @return $this
+     *
+     * @throws JsonException
      */
-    public function sometimes($attribute, $rules, callable $callback)
+    public function sometimes(array|string $attribute, array|string $rules, callable $callback): static
     {
         $payload = new Fluent($this->getData());
 
-        if (call_user_func($callback, $payload)) {
+        if ($callback($payload)) {
             foreach ((array) $attribute as $key) {
                 $this->addRules([$key => $rules]);
             }
@@ -483,10 +401,8 @@ class RequestParamTypeResolver
 
     /**
      * Register an array of custom validator extensions.
-     *
-     * @param array $extensions
      */
-    public function addExtensions(array $extensions)
+    public function addExtensions(array $extensions): void
     {
         if ($extensions) {
             $keys = array_map('\Illuminate\Support\Str::snake', array_keys($extensions));
@@ -499,10 +415,8 @@ class RequestParamTypeResolver
 
     /**
      * Register an array of custom implicit validator extensions.
-     *
-     * @param array $extensions
      */
-    public function addImplicitExtensions(array $extensions)
+    public function addImplicitExtensions(array $extensions): void
     {
         $this->addExtensions($extensions);
 
@@ -513,22 +427,16 @@ class RequestParamTypeResolver
 
     /**
      * Register a custom validator extension.
-     *
-     * @param string          $rule
-     * @param \Closure|string $extension
      */
-    public function addExtension($rule, $extension)
+    public function addExtension(string $rule, Closure|string $extension): void
     {
         $this->extensions[Str::snake($rule)] = $extension;
     }
 
     /**
      * Register a custom implicit validator extension.
-     *
-     * @param string          $rule
-     * @param \Closure|string $extension
      */
-    public function addImplicitExtension($rule, $extension)
+    public function addImplicitExtension(string $rule, Closure|string $extension): void
     {
         $this->addExtension($rule, $extension);
 
@@ -537,10 +445,8 @@ class RequestParamTypeResolver
 
     /**
      * Register an array of custom validator message replacers.
-     *
-     * @param array $replacers
      */
-    public function addReplacers(array $replacers)
+    public function addReplacers(array $replacers): void
     {
         if ($replacers) {
             $keys = array_map('\Illuminate\Support\Str::snake', array_keys($replacers));
@@ -553,21 +459,16 @@ class RequestParamTypeResolver
 
     /**
      * Register a custom validator message replacer.
-     *
-     * @param string          $rule
-     * @param \Closure|string $replacer
      */
-    public function addReplacer($rule, $replacer)
+    public function addReplacer(string $rule, Closure|string $replacer): void
     {
         $this->replacers[Str::snake($rule)] = $replacer;
     }
 
     /**
      * Set the custom messages for the validator.
-     *
-     * @param array $messages
      */
-    public function setCustomMessages(array $messages)
+    public function setCustomMessages(array $messages): void
     {
         $this->customMessages = array_merge($this->customMessages, $messages);
     }
@@ -575,11 +476,10 @@ class RequestParamTypeResolver
     /**
      * Set the custom attributes on the validator.
      *
-     * @param array $attributes
      *
      * @return $this
      */
-    public function setAttributeNames(array $attributes)
+    public function setAttributeNames(array $attributes): static
     {
         $this->customAttributes = $attributes;
 
@@ -589,11 +489,10 @@ class RequestParamTypeResolver
     /**
      * Add custom attributes to the validator.
      *
-     * @param array $customAttributes
      *
      * @return $this
      */
-    public function addCustomAttributes(array $customAttributes)
+    public function addCustomAttributes(array $customAttributes): static
     {
         $this->customAttributes = array_merge($this->customAttributes, $customAttributes);
 
@@ -603,11 +502,10 @@ class RequestParamTypeResolver
     /**
      * Set the custom values on the validator.
      *
-     * @param array $values
      *
      * @return $this
      */
-    public function setValueNames(array $values)
+    public function setValueNames(array $values): static
     {
         $this->customValues = $values;
 
@@ -617,11 +515,10 @@ class RequestParamTypeResolver
     /**
      * Add the custom values for the validator.
      *
-     * @param array $customValues
      *
      * @return $this
      */
-    public function addCustomValues(array $customValues)
+    public function addCustomValues(array $customValues): static
     {
         $this->customValues = array_merge($this->customValues, $customValues);
 
@@ -630,10 +527,8 @@ class RequestParamTypeResolver
 
     /**
      * Set the fallback messages for the validator.
-     *
-     * @param array $messages
      */
-    public function setFallbackMessages(array $messages)
+    public function setFallbackMessages(array $messages): void
     {
         $this->fallbackMessages = $messages;
     }
@@ -641,13 +536,12 @@ class RequestParamTypeResolver
     /**
      * Get the Presence Verifier implementation.
      *
-     * @return \Illuminate\Validation\PresenceVerifierInterface
      *
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
-    public function getPresenceVerifier()
+    public function getPresenceVerifier(): PresenceVerifierInterface
     {
-        if (!isset($this->presenceVerifier)) {
+        if (! isset($this->presenceVerifier)) {
             throw new RuntimeException('Presence verifier has not been set.');
         }
 
@@ -657,13 +551,10 @@ class RequestParamTypeResolver
     /**
      * Get the Presence Verifier implementation.
      *
-     * @param string $connection
      *
-     * @return \Illuminate\Validation\PresenceVerifierInterface
-     *
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
-    protected function getPresenceVerifierFor($connection)
+    protected function getPresenceVerifierFor(string $connection): PresenceVerifierInterface
     {
         return tap(
             $this->getPresenceVerifier(),
@@ -675,44 +566,34 @@ class RequestParamTypeResolver
 
     /**
      * Set the Presence Verifier implementation.
-     *
-     * @param \Illuminate\Validation\PresenceVerifierInterface $presenceVerifier
      */
-    public function setPresenceVerifier(PresenceVerifierInterface $presenceVerifier)
+    public function setPresenceVerifier(PresenceVerifierInterface $presenceVerifier): void
     {
         $this->presenceVerifier = $presenceVerifier;
     }
 
     /**
      * Call a custom validator extension.
-     *
-     * @param string $rule
-     * @param array  $parameters
-     *
-     * @return bool|null
      */
-    protected function callExtension($rule, $parameters)
+    protected function callExtension(string $rule, array $parameters): ?bool
     {
         $callback = $this->extensions[$rule];
 
         if ($callback instanceof Closure) {
             return call_user_func_array($callback, $parameters);
-        } elseif (is_string($callback)) {
+        }
+
+        if (is_string($callback)) {
             return $this->callClassBasedExtension($callback, $parameters);
         }
     }
 
     /**
-     * Call a class based validator extension.
-     *
-     * @param string $callback
-     * @param array  $parameters
-     *
-     * @return bool
+     * Call a class-based validator extension.
      */
-    protected function callClassBasedExtension($callback, $parameters)
+    protected function callClassBasedExtension(string $callback, array $parameters): bool
     {
-        list($class, $method) = Str::parseCallback($callback, 'validate');
+        [$class, $method] = Str::parseCallback($callback, 'validate');
 
         return call_user_func_array([$this->container->make($class), $method], $parameters);
     }
@@ -720,14 +601,11 @@ class RequestParamTypeResolver
     /**
      * Handle dynamic calls to class methods.
      *
-     * @param string $method
-     * @param array  $parameters
+     * @return bool|null
      *
-     * @return mixed
-     *
-     * @throws \BadMethodCallException
+     * @throws BadMethodCallException
      */
-    public function __call($method, $parameters)
+    public function __call(string $method, array $parameters)
     {
         $rule = Str::snake(substr($method, 8));
 

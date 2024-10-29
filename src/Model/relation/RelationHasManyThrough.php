@@ -8,6 +8,8 @@ namespace Square1\Laravel\Connect\Model\Relation;
  * and open the template in the editor.
  */
 
+use Illuminate\Database\Eloquent\Model;
+
 /**
  * Description of RelationHasOne
  *
@@ -15,68 +17,27 @@ namespace Square1\Laravel\Connect\Model\Relation;
  */
 class RelationHasManyThrough extends Relation
 {
-
-        /**
-         * The "through" parent model instance.
-         *
-         * @var \Illuminate\Database\Eloquent\Model
-         */
-    protected $throughParent;
-
-    /**
-     * The far parent model instance.
-     *
-     * @var \Illuminate\Database\Eloquent\Model
-     */
-    protected $farParent;
-
-    /**
-     * The near key on the relationship.
-     *
-     * @var string
-     */
-    protected $firstKey;
-
-    /**
-     * The far key on the relationship.
-     *
-     * @var string
-     */
-    protected $secondKey;
-
-    /**
-     * The local key on the relationship.
-     *
-     * @var string
-     */
-    protected $localKey;
-    
-    public function __construct($related, $farParent, $throughParent, $firstKey, $secondKey, $localKey, $relationName)
+    public function __construct(Model $related, protected Model $farParent, protected Model $throughParent, protected string $firstKey, protected string $secondKey, protected string $localKey, ?string $relationName)
     {
-        $this->localKey = $localKey;
-        $this->firstKey = $firstKey;
-        $this->secondKey = $secondKey;
-        $this->farParent = $farParent;
-        $this->throughParent = $throughParent;
 
         parent::__construct($related, $throughParent, $relationName);
     }
-    
-    public function relatesToMany()
+
+    public function relatesToMany(): bool
     {
         return true;
     }
 
-    public function toArray()
+    public function toArray(): array
     {
         $array = parent::toArray();
-        
+
         $array['localKey'] = $this->localKey;
         $array['firstKey'] = $this->firstKey;
         $array['secondKey'] = $this->secondKey;
         $array['farParent'] = $this->farParent;
         $array['throughParent'] = $this->throughParent;
-         
+
         return $array;
     }
 }

@@ -2,60 +2,41 @@
 
 namespace Square1\Laravel\Connect\Model;
 
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Collection;
-use \Illuminate\Filesystem\Filesystem;
 use Square1\Laravel\Connect\Console\MakeClient;
-use Square1\Laravel\Connect\Model\MigrationInspector;
 
 class MigrationsHandler
 {
-   
-    
     /**
      * Map Database table list of parameters to the table name
-     *
-     * @var type array
      */
-    private $tableMap;
-    
-    
-    /**
-     * The filesystem instance.
-     *
-     * @var \Illuminate\Filesystem\Filesystem
-     */
-    private $files;
-    
-    private $client;
-      
-    public function __construct(Filesystem $files, MakeClient $client)
+    private array $tableMap;
+
+    public function __construct(private readonly Filesystem $files, private readonly MakeClient $client)
     {
-        $this->files = $files;
-        $this->client = $client;
         $this->tableMap = [];
     }
-     
-     
-    
-    
+
     /**
      * Get the name of the migration.
-     *
-     * @param  string $path
-     * @return string
      */
-    public function getMigrationName($path)
+    public function getMigrationName(string $path): string
     {
         return str_replace('.php', '', basename($path));
     }
-    
-    
-    public function process()
-    {
-        $this->client->info("----  PROCESSING MIGRATIONS  ------");
 
-        $migrations =  $this->getMigrationFiles(database_path()."/migrations");
-       
+    /**
+     * @throws FileNotFoundException
+     */
+    public function process(): array
+    {
+        $this->client->info('----  PROCESSING MIGRATIONS  ------');
+
+        $migrations = $this->getMigrationFiles(database_path().'/migrations');
+
         foreach ($migrations as $migration) {
             $this->files->requireOnce($migration);
         }
@@ -63,24 +44,24 @@ class MigrationsHandler
         $classes = get_declared_classes();
 
         foreach ($classes as $class) {
-          
+
             //discard framework classes
-            if (is_subclass_of($class, 'Illuminate\Database\Migrations\Migration')
-                && strpos((string)$class, 'Illuminate') === false
+            if (is_subclass_of($class, Migration::class)
+                && ! str_contains((string) $class, 'Illuminate')
             ) {
                 $inspector = new MigrationInspector($class, $this->files, $this->client);
                 $inspector->inspect();
                 $this->aggregateTableDetails($inspector);
             }
         }
-        
+
         return $this->tableMap;
     }
-    
-    private function aggregateTableDetails(MigrationInspector $inspector)
+
+    private function aggregateTableDetails(MigrationInspector $inspector): void
     {
         foreach ($inspector->getAttributes() as $table => $attributes) {
-  
+
             //loop over the attributes for that table
             foreach ($attributes as $attribute => $attributeSettings) {
                 foreach ($attributeSettings as $attributeSetting) {
@@ -88,45 +69,42 @@ class MigrationsHandler
                 }
             }
         }
-        
+
         foreach ($inspector->getCommands() as $table => $commands) {
-            if (!isset($this->tableMap[$table]["commands"])) {
-                $this->tableMap[$table]["commands"] = array();
+            if (! isset($this->tableMap[$table]['commands'])) {
+                $this->tableMap[$table]['commands'] = [];
             }
-            $this->tableMap[$table]["commands"] = array_merge($commands, $this->tableMap[$table]["commands"]);
+            $this->tableMap[$table]['commands'] = array_merge($commands, $this->tableMap[$table]['commands']);
         }
-        
+
         //now we need to apply those commands
         foreach ($this->tableMap as $table) {
             $this->runCommandsOnTable($table);
         }
     }
-    
-    private function runCommandsOnTable(&$table)
+
+    private function runCommandsOnTable(&$table): void
     {
-        $attributes = $table["attributes"];
-        $commands = $table["commands"];
-        
+        $attributes = $table['attributes'];
+        $commands = $table['commands'];
+
         foreach ($commands as $command) {
-            if ($command->name == "foreign") {
-                $column =  $command->columns[0];
+            if ($command->name === 'foreign') {
+                $column = $command->columns[0];
                 if (isset($attributes[$column])) {
                     $attributes[$column]->on = $command->on;
                     $attributes[$column]->references = $command->references;
                 }
             }
         }
-        
+
         $table['attributes'] = $attributes;
     }
-    
+
     /**
-     * Get all of the migration files in a given path.
-     *
-     * @param  string|array $paths
-     * @return array
+     * Get all the migration files in a given path.
      */
-    public function getMigrationFiles($paths)
+    public function getMigrationFiles(array|string $paths): array
     {
         return Collection::make($paths)->flatMap(
             function ($path) {

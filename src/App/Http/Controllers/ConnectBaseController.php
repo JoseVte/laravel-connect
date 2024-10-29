@@ -2,27 +2,27 @@
 
 namespace Square1\Laravel\Connect\App\Http\Controllers;
 
+use Illuminate\Container\Container;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Container\Container;
-use Illuminate\Contracts\Debug\ExceptionHandler;
 
 class ConnectBaseController extends Controller
 {
-    private $request;
-            
-    public function __construct(Request $request)
-    {
-        $this->request = $request;
-    }
-     
+    public function __construct(protected Request $request) {}
 
-    public function options()
+    public function options(): string
     {
         return '';
     }
-    
-    public function withErrorHandling($closure)
+
+    /**
+     * @throws \Throwable
+     * @throws BindingResolutionException
+     */
+    public function withErrorHandling($closure): JsonResponse
     {
         try {
             return $closure();
@@ -32,17 +32,17 @@ class ConnectBaseController extends Controller
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
             ];
-            
+
             return response()->connect(['error' => $payload]);
         }
     }
-    
+
     /**
      * Get the exception handler instance.
      *
-     * @return \Illuminate\Contracts\Debug\ExceptionHandler
+     * @throws BindingResolutionException
      */
-    protected function exceptionHandler()
+    protected function exceptionHandler(): ExceptionHandler
     {
         return Container::getInstance()->make(ExceptionHandler::class);
     }

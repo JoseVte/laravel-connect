@@ -17,40 +17,30 @@
 namespace Square1\Laravel\Connect\App\Filters;
 
 use Illuminate\Contracts\Support\Arrayable;
-use Square1\Laravel\Connect\App\Filters\Criteria;
-use Square1\Laravel\Connect\App\Filters\CriteriaCollection;
+use Illuminate\Database\Eloquent\Model;
 
 class Filter implements Arrayable
 {
-    private $filters;
-   
-    /**
-     * The Laravel model on which to apply those filters
-     *
-     * @var type Model
-     */
-    private $model;
+    private array $filters;
 
-    private $request;
+    private array $request;
 
-    public function __construct($model)
+    public function __construct(private readonly Model $model)
     {
-        $this->model = $model;
         $this->filters = [];
     }
-    
-    public function addFilter(CriteriaCollection $filter)
+
+    public function addFilter(CriteriaCollection $filter): void
     {
         $this->filters[] = $filter;
     }
-    
 
     public function apply($query, $model)
     {
         $first = true;
-        
+
         foreach ($this->filters as $filter) {
-            if ($first == true) {
+            if ($first) {
                 $query->where(
                     function ($q) use ($filter, $model) {
                         $filter->apply($q, $model);
@@ -63,76 +53,62 @@ class Filter implements Arrayable
                     }
                 );
             }
-            
+
             $first = false;
         }
-    
+
         return $query;
     }
-    
-    
-   
-    
-    /**
-     *
-     * @param  type $model
-     * @param  type $array
-     * @return \Square1\Laravel\Connect\App\Filters\Filter
-     */
-    
-    public static function buildFromArray($model, $array = [])
+
+    public static function buildFromArray(Model $model, $array = []): Filter
     {
         $filter = new Filter($model);
         $filter->request = $array;
-   
-        
+
         foreach ($array as $filterData) {//array containing a filter
             $filterCollection = static::buildFilterFromArray($filterData);
-            
+
             if (isset($filterCollection)) {
                 $filter->addFilter($filterCollection);
             }
         }
-        
-        return $filter;
-    }
-    
-    public static function buildFilterFromArray($filterData)
-    {
-        if (!is_array($filterData)) {
-            return null;
-        }
-        
-        $filter = new CriteriaCollection();
-        
-        foreach ($filterData as $paramName => $criterias) {
-            foreach ($criterias as $verb => $value) {
-                if (is_array($value)) {
-                    foreach ($value as $v) {
-                        $criteria = new Criteria($paramName, $v, $verb);
-                        $filter->addCriteria($criteria);
-                    }
-                } else {
-                    $criteria = new Criteria($paramName, $value, $verb);
-                    $filter->addCriteria($criteria);
-                }
-            }
-        }
-        
+
         return $filter;
     }
 
-    
-    public function toArray()
+    public static function buildFilterFromArray($filterData): ?CriteriaCollection
+    {
+        if (! is_array($filterData)) {
+            return null;
+        }
+
+        $filter = new CriteriaCollection;
+
+        foreach ($filterData as $paramName => $criteria) {
+            foreach ($criteria as $verb => $value) {
+                if (is_array($value)) {
+                    foreach ($value as $v) {
+                        $newCriteria = new Criteria($paramName, $v, $verb);
+                        $filter->addCriteria($newCriteria);
+                    }
+                } else {
+                    $newCriteria = new Criteria($paramName, $value, $verb);
+                    $filter->addCriteria($newCriteria);
+                }
+            }
+        }
+
+        return $filter;
+    }
+
+    public function toArray(): array
     {
         $result = [];
-        
+
         foreach ($this->filters as $filter) {
             $result[] = $filter->toArray();
         }
-       
-        
-        
-        return ['orig' => $this->request, 'parsed'=> $result ];
+
+        return ['orig' => $this->request, 'parsed' => $result];
     }
 }
