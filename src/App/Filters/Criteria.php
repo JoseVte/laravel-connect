@@ -77,7 +77,7 @@ class Criteria
         return $this->value;
     }
 
-    public function apply(Builder $query, string $table = ''): Builder
+    public function apply(Builder|\Illuminate\Database\Eloquent\Builder $query, string $table = ''): Builder|\Illuminate\Database\Eloquent\Builder
     {
         if ($table !== '') {
             $name = $table.'.'.$this->param;

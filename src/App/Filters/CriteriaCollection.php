@@ -8,7 +8,9 @@
 namespace Square1\Laravel\Connect\App\Filters;
 
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Schema;
 
 class CriteriaCollection implements Arrayable
@@ -36,7 +38,7 @@ class CriteriaCollection implements Arrayable
         }
     }
 
-    public function apply($query, $model)
+    public function apply(Builder|\Illuminate\Database\Eloquent\Builder $query, Model $model)
     {
         $table = $model->getTable();
 
